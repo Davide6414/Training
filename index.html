@@ -1,0 +1,280 @@
+<!DOCTYPE html><html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workout Timer 40/20 — Upper body + core</title>
+  <style>
+    :root {
+      --bg: #0f172a;        /* slate-900 */
+      --panel: #111827;     /* gray-900 */
+      --accent: #22d3ee;    /* cyan-400 */
+      --accent2: #60a5fa;   /* blue-400 */
+      --text: #e5e7eb;      /* gray-200 */
+      --muted: #94a3b8;     /* slate-400 */
+      --ok: #34d399;        /* green-400 */
+      --warn: #fbbf24;      /* amber-400 */
+      --danger: #fb7185;    /* rose-400 */
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: radial-gradient(1200px 800px at 70% 10%, #0b1220, var(--bg));
+      color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid; place-items: center; padding: 24px;
+    }
+    .app {
+      width: min(900px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 20px 20px 24px; backdrop-filter: blur(6px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    }
+    header {display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;}
+    h1 {font-size: clamp(1.2rem, 1rem + 2vw, 2rem); margin: 0; letter-spacing: .3px;}
+    .settings {display:flex; gap:12px; flex-wrap:wrap;}
+    .badge {padding: 6px 10px; border-radius: 999px; background: #0b1220; border:1px solid rgba(255,255,255,.08); color: var(--muted);}.display {margin: 18px 0 10px; display:grid; grid-template-columns: 1.2fr .8fr; gap: 16px;}
+@media (max-width: 700px){ .display{ grid-template-columns: 1fr; } }
+
+.panel {background: var(--panel); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 18px;}
+.phase {font-size: .95rem; color: var(--muted); letter-spacing: .4px; margin-bottom: 6px;}
+.current {
+  display:grid; gap: 8px; align-content:center; min-height: 180px;
+  background: linear-gradient(180deg, rgba(34,211,238,.06), rgba(96,165,250,.04));
+  border: 1px solid rgba(34,211,238,.18);
+}
+.exercise {font-size: clamp(1.2rem, .7rem + 3vw, 2.3rem); font-weight: 700;}
+.time {font-variant-numeric: tabular-nums; font-size: clamp(2rem, 1.2rem + 4vw, 4rem); font-weight: 800;}
+.sub {color: var(--muted);}
+
+.next .row {display:flex; justify-content:space-between; align-items:center; margin: 6px 0;}
+.label {color: var(--muted);} .value {color: var(--text); font-weight: 600;}
+
+.controls {display:flex; gap:12px; flex-wrap:wrap; margin: 12px 0 2px;}
+.btn {
+  appearance:none; border:none; cursor:pointer; padding: 10px 14px; border-radius: 12px;
+  background: #0b1220; color: var(--text); border: 1px solid rgba(255,255,255,.12); font-weight:600; letter-spacing:.3px;
+  transition: transform .05s ease, background .2s ease, border-color .2s ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: linear-gradient(180deg, var(--accent), var(--accent2)); color: #06121a; border-color: transparent; }
+.btn.warn { background: linear-gradient(180deg, var(--warn), #f59e0b); color: #1f1300; border-color: transparent; }
+.btn.danger { background: linear-gradient(180deg, var(--danger), #f43f5e); color: #2a0108; border-color: transparent; }
+
+.progress {height: 10px; width: 100%; background: rgba(255,255,255,.06); border-radius: 999px; overflow:hidden; margin: 12px 0 0;}
+.bar {height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2));}
+
+ul.list {margin: 0; padding: 0 0 0 18px; display:grid; gap: 6px; color: var(--muted);} 
+.footer-note {font-size:.9rem; color: var(--muted); margin-top: 8px;}
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Timer 40/20 — Upper body + core</h1>
+      <div class="settings">
+        <span class="badge" id="roundBadge">Giro: <strong id="round">1</strong>/3</span>
+        <span class="badge">Esercizi: <strong id="idx">1</strong>/7</span>
+        <span class="badge">Prep: <strong id="prep">10s</strong></span>
+      </div>
+    </header><section class="display">
+  <div class="panel current">
+    <div class="phase" id="phase">PREP</div>
+    <div class="exercise" id="exercise">Preparazione</div>
+    <div class="time" id="time">00:10</div>
+    <div class="sub" id="sub">Si parte tra poco…</div>
+    <div class="progress"><div class="bar" id="progressBar"></div></div>
+  </div>
+  <div class="panel next">
+    <div class="row"><div class="label">Prossimo</div><div class="value" id="next">Push-up</div></div>
+    <div class="row"><div class="label">Fase successiva</div><div class="value" id="nextPhase">WORK 40s</div></div>
+    <div class="row"><div class="label">Durata totale</div><div class="value" id="total">—</div></div>
+    <div class="row"><div class="label">Tempo rimanente</div><div class="value" id="remaining">—</div></div>
+    <hr style="border-color: rgba(255,255,255,.08)">
+    <div class="row"><div class="label">Elenco</div></div>
+    <ul class="list" id="list"></ul>
+  </div>
+</section>
+
+<div class="controls">
+  <button class="btn primary" id="start">Start</button>
+  <button class="btn" id="pause">Pausa</button>
+  <button class="btn warn" id="skip">Salta fase</button>
+  <button class="btn danger" id="reset">Reset</button>
+</div>
+<div class="footer-note">Bip automatico all’inizio di ogni WORK e REST. Tieni la pagina in primo piano per evitare sospensioni del timer su alcuni dispositivi.</div>
+
+  </div><script>
+(function(){
+  // ---- Config ----
+  const WORK = 40;     // secondi
+  const REST = 20;     // secondi
+  const ROUNDS = 3;
+  const PREP = 10;     // conto alla rovescia iniziale
+  const EXERCISES = [
+    "Push-up",
+    "Pike push-up",
+    "Push-up larghi",
+    "Plank con shoulder taps",
+    "Push-up a diamante",
+    "Plank + reach avanti",
+    "Superman hold"
+  ];
+
+  // ---- DOM refs ----
+  const phaseEl = document.getElementById('phase');
+  const exerciseEl = document.getElementById('exercise');
+  const timeEl = document.getElementById('time');
+  const subEl = document.getElementById('sub');
+  const nextEl = document.getElementById('next');
+  const nextPhaseEl = document.getElementById('nextPhase');
+  const totalEl = document.getElementById('total');
+  const remainingEl = document.getElementById('remaining');
+  const roundEl = document.getElementById('round');
+  const idxEl = document.getElementById('idx');
+  const prepEl = document.getElementById('prep');
+  const progressBar = document.getElementById('progressBar');
+  const listEl = document.getElementById('list');
+
+  const btnStart = document.getElementById('start');
+  const btnPause = document.getElementById('pause');
+  const btnSkip  = document.getElementById('skip');
+  const btnReset = document.getElementById('reset');
+
+  // ---- Audio (Web Audio API) ----
+  let audioCtx = null;
+  function beep(freq = 880, dur = 0.15, type = 'sine'){
+    if(!audioCtx) return; // create on user gesture
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur + 0.02);
+  }
+  function beepWork(){ beep(940, 0.18, 'square'); }
+  function beepRest(){ beep(520, 0.18, 'square'); }
+  function beepDone(){ beep(1040, 0.25, 'sawtooth'); setTimeout(()=>beep(1240,0.25,'sawtooth'), 140); }
+
+  // ---- State ----
+  const totalPhases = 1 /*prep*/ + ROUNDS * (EXERCISES.length * 2); // work+rest per esercizio
+  const totalSeconds = PREP + ROUNDS * (EXERCISES.length * (WORK + REST));
+  totalEl.textContent = formatClock(totalSeconds);
+  prepEl.textContent = PREP + 's';
+  listEl.innerHTML = EXERCISES.map((n,i)=>`<li>${i+1}. ${n} — 40s work / 20s rest</li>`).join('');
+
+  let timer = null;
+  let started = false;
+  let paused = false;
+
+  let phase = 'prep'; // 'prep' | 'work' | 'rest' | 'done'
+  let round = 1;
+  let exIdx = 0;  // 0-based
+  let tLeft = PREP; // seconds in current phase
+  let elapsedTotal = 0; // seconds
+  updateUI();
+
+  // ---- Controls ----
+  btnStart.addEventListener('click', () => {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(!started){ started = true; startTick(); }
+    if(paused){ paused = false; startTick(); }
+  });
+  btnPause.addEventListener('click', () => { paused = true; stopTick(); });
+  btnSkip.addEventListener('click', () => { if(!started) return; nextPhase(true); });
+  btnReset.addEventListener('click', resetAll);
+
+  // ---- Timer engine ----
+  function startTick(){
+    stopTick();
+    timer = setInterval(() => {
+      if(paused) return;
+      tLeft -= 1; elapsedTotal += 1;
+      if(tLeft <= 0){ nextPhase(false); }
+      updateUI();
+    }, 1000);
+  }
+  function stopTick(){ if(timer){ clearInterval(timer); timer = null; } }
+
+  function nextPhase(skipped){
+    // Transition logic
+    if(phase === 'prep'){
+      phase = 'work'; tLeft = WORK; exIdx = 0; round = 1; if(!skipped) beepWork();
+    } else if(phase === 'work'){
+      phase = 'rest'; tLeft = REST; if(!skipped) beepRest();
+    } else if(phase === 'rest'){
+      // advance exercise / round
+      if(exIdx < EXERCISES.length - 1){
+        exIdx += 1; phase = 'work'; tLeft = WORK; if(!skipped) beepWork();
+      } else {
+        if(round < ROUNDS){
+          round += 1; exIdx = 0; phase = 'work'; tLeft = WORK; if(!skipped) beepWork();
+        } else {
+          phase = 'done'; tLeft = 0; stopTick(); beepDone();
+        }
+      }
+    }
+  }
+
+  // ---- UI ----
+  function updateUI(){
+    roundEl.textContent = String(round);
+    idxEl.textContent = String(Math.min(exIdx+1, EXERCISES.length));
+
+    if(phase === 'prep'){
+      phaseEl.textContent = 'PREP';
+      exerciseEl.textContent = 'Preparazione';
+      subEl.textContent = 'Respira, posizionati.';
+      nextEl.textContent = EXERCISES[0];
+      nextPhaseEl.textContent = `WORK ${WORK}s`;
+    } else if(phase === 'work'){
+      phaseEl.textContent = 'WORK';
+      exerciseEl.textContent = EXERCISES[exIdx];
+      subEl.textContent = `Giro ${round}/${ROUNDS} — Esercizio ${exIdx+1}/${EXERCISES.length}`;
+      nextEl.textContent = 'Pausa';
+      nextPhaseEl.textContent = `REST ${REST}s`;
+    } else if(phase === 'rest'){
+      phaseEl.textContent = 'REST';
+      exerciseEl.textContent = 'Recupero attivo';
+      subEl.textContent = `Arriva: ${exIdx < EXERCISES.length-1 ? EXERCISES[exIdx+1] : `Giro ${round+1}`}`;
+      nextEl.textContent = exIdx < EXERCISES.length-1 ? EXERCISES[exIdx+1] : (round < ROUNDS ? `Giro ${round+1}` : 'Fine');
+      nextPhaseEl.textContent = exIdx < EXERCISES.length-1 || round < ROUNDS ? `WORK ${WORK}s` : '—';
+    } else if(phase === 'done'){
+      phaseEl.textContent = 'FINE';
+      exerciseEl.textContent = 'Ottimo.';
+      subEl.textContent = 'Sessione completa.';
+      nextEl.textContent = '—'; nextPhaseEl.textContent = '—';
+    }
+
+    timeEl.textContent = formatClock(tLeft);
+
+    const rem = Math.max(0, totalSeconds - elapsedTotal);
+    remainingEl.textContent = formatClock(rem);
+
+    // global progress bar
+    const progressed = Math.min(elapsedTotal / totalSeconds, 1);
+    progressBar.style.width = (progressed * 100).toFixed(2) + '%';
+
+    // color hints
+    if(phase === 'work'){ progressBar.style.background = 'linear-gradient(90deg, var(--ok), var(--accent))'; }
+    else if(phase === 'rest'){ progressBar.style.background = 'linear-gradient(90deg, var(--warn), var(--accent2))'; }
+  }
+
+  function resetAll(){
+    stopTick(); started = false; paused = false; phase = 'prep'; round = 1; exIdx = 0; tLeft = PREP; elapsedTotal = 0; updateUI();
+  }
+
+  function formatClock(s){
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s/60); const ss = s%60; return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }
+
+  // Page visibility: warn if tab hidden (some mobile browsers throttle timers)
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden && started && !paused){ subEl.textContent = 'Scheda in background: i timer potrebbero rallentare.'; }
+  });
+})();
+</script></body>
+</html>
